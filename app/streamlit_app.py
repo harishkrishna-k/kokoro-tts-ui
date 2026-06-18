@@ -2,9 +2,46 @@ import io
 import sys
 import wave
 from pathlib import Path
+from types import ModuleType
 
 import streamlit as st
 import numpy as np
+
+# transformers 5.x has hard imports of torchvision submodules in its
+# AlbertModel import chain, even though kokoro doesn't need vision.
+# Install a meta path finder that mocks any torchvision.* import on the fly.
+from importlib.abc import MetaPathFinder, Loader
+from importlib.machinery import ModuleSpec
+from unittest.mock import MagicMock
+
+class _MockModule(ModuleType):
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
+        return MagicMock()
+
+class _MockLoader(Loader):
+    def create_module(self, spec):
+        return sys.modules.get(spec.name)
+    def exec_module(self, module):
+        pass
+
+class _TVFinder(MetaPathFinder):
+    def find_spec(self, fullname, path, target=None):
+        if fullname == 'torchvision' or fullname.startswith('torchvision.'):
+            if fullname not in sys.modules:
+                m = _MockModule(fullname)
+                m.__path__ = []
+                m.__package__ = fullname.rpartition('.')[0] if '.' in fullname else fullname
+                spec = ModuleSpec(fullname, _MockLoader())
+                spec.submodule_search_locations = []
+                m.__spec__ = spec
+                sys.modules[fullname] = m
+            return sys.modules[fullname].__spec__
+        return None
+
+sys.modules.pop('torchvision', None)
+sys.meta_path.insert(0, _TVFinder())
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

@@ -6,4 +6,3 @@ loguru
 numpy
 scipy
 streamlit>=1.40.0
-torchvision
