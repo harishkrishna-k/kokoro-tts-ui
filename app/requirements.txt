@@ -1,0 +1,2 @@
+kokoro>=0.9.4
+streamlit>=1.40.0
