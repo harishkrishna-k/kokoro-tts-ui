@@ -1,7 +1,12 @@
 import io
+import sys
 import wave
+from pathlib import Path
+
 import streamlit as st
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 LANGUAGES = {
     "a": "American English",
